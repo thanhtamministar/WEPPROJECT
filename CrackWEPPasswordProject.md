@@ -1,10 +1,30 @@
-# Crack WEP Password
-## Công cụ
-* Aireplay-ng
-* Aircrack-ng
-* Airodump-ng
-* Commview
-* Kismet
+# Cracking WEP Password
+## Wired Equivalent Privacy
+Wired Equivalent Privacy (WEP) là thuật toán bảo mật cho mạng không dây chuẩn IEEE 802.11. WEP được sử dụng để bảo vệ cho các frames ở tầng data-link trong môi hình OSI trong quá trình luân chuyển trong mạng không dây. 
+## Cách WEP hoạt động
+WEP sử dụng các khóa bí mật để mã hóa dữ liệu. Cả AP và các Station phải biết các khóa bí mật.
+Có hai loại WEP với các khóa là 64 bit hoặc 128 bit. Khóa dài hơn cho mức độ bảo mật cao hơn một chút (nhưng không quá nhiều). Trong thực tế, các khóa được dùng thường dài 40 bit và 104 bit, 24 bits còn lại thường được dùng cho một biến được gọi là Initialization Vector (IV). IV được tạo ngẫu nhiên và được gán vào đầu hoặc cuối ciphertext và được gửi tới bên nhận. Khi bên nhận nhận được gói tin thì sẽ tiến hành bóc tách gói tin để lấy IV trước khi giải mã gói tin. 
+WEP sử dụng thuật toán RC4 để tạo ra key stream và phép toán XOR để mã hóa các gói tin khi chúng được gửi ra từ Access Point. 
+```bash
+# Ciphertext =Plaintext ⊕ RC4(IV, Key)
+```
+Đối với mỗi packet, WEP sử dụng một IV khác nhau để key sream RC4 không bị lặp lại và những đoạn ciphertext hoàn toàn khác nhau mặc dù plaintext giống nhau.
+
+## Điểm yếu của WEP
+### Giá trị IV quá ngắn và có thể bị sử dụng lại
+Bởi vì RC4 là stream cipher nên key mã hóa không bao giờ được sử dụng lặp lại hai lần. Mục đích của IV là ngăn chặn việc bị lặp lại nhưng độ dài 24-bit của IV là không đủ dài. 24 bits key đồng nghĩa với 16777216 (16,7 triệu) giá trị có thể có. Nghe thì có vẻ nhiều nhưng trong một mạng lớn thì số lượng này có thể đạt đến chỉ trong vài giờ. Đối với 24-bits IV, xác suất 50% IV sẽ bị lặp lại sau 5.000 gói.
+
+### IV khiến key stream có lỗ hổng
+Chuẩn 802.11 không chỉ định cụ thể cách IV được tạo hay thay đổi, một bộ wireless adapter có thể tạo ra những chuỗi IV giống nhau hoặc sử dụng IV cố định. 
+
+### IV được gửi kèm với ciphertext ở dạng cleartext
+Những kẻ nghe lén trong mạng hoàn toàn có thể biết được 24bits của mỗi packet key, kết hợp với điểm yếu của việc định thời key trong RC4 thì kẻ tấn công có thể phân tích được keys chỉ với lượng nhỏ traffic. 
+
+## Cách tấn công 
+Để crack WEP key của AP, cần thu thập 1 lượng các initialization vectors (IVs). Traffic của network thông thường không lưu thông các IVs này 1 cách nhanh chóng. Vì không đủ kiên nhẫn chờ đợi, attacker sử dụng kĩ thuật injection để tăng tốc độ của quá trình. Một trong những cách inject hiệu quả nhất để lấy được số lượng lớn IVs là kĩ thuật ARP request replay attack. Attacker lắng nghe một gói tin ARP trong mạng sau đó retransmit nó lại cho AP, lần lượt, làm cho AP repeat gói tin ARP với IV mới. Cùng một gói tin ARP sẽ được gửi lặp lại liên tục, tuy nhiên mỗi gói tin trả lời từ AP sẽ có một IV mới. Nhờ kĩ thuật này, target AP sẽ phản hồi lại nhanh chóng, cho phép bắt một số lượng lớn các IVs trong thời gian ngắn. Dựa vào số lượng IVs này, attacker có thể tìm ra được WEP key.
+
+> ARP (Address resolution protocol) là một giao thức TCP/IP được dùng để convert một IP address sang một physical address. Một host muốn biết địa chỉ physical của một host khác sẽ broadcast một ARP request trên mạng, host trong mạng có địa chỉ chứa trong ARP request sẽ replies lại physical address của mình.
+
 ## Mô hình tấn công
 
 ![mo hinh tan cong](ALLIMGWEPPROJECT/mhtc.png "Mô hình tấn công")
@@ -33,10 +53,14 @@ Access Point:
 
 ![WEP Key 2](ALLIMGWEPPROJECT/wepkey2.png "WEP key 2")
 
-## Solution
-Để crack WEP key của AP, cần thu thập 1 lượng các initialization vectors (IVs). Traffic của network thông thường không lưu thông các IVs này 1 cách nhanh chóng. Vì không đủ kiên nhẫn chờ đợi, attacker sử dụng kĩ thuật injection để tăng tốc độ của quá trình. Một trong những cách inject hiệu quả nhất để lấy được số lượng lớn IVs là kĩ thuật ARP request replay attack. Attacker lắng nghe một gói tin ARP trong mạng sau đó retransmit nó lại cho AP, lần lượt, làm cho AP repeat gói tin ARP với IV mới. Cùng một gói tin ARP sẽ được gửi lặp lại liên tục, tuy nhiên mỗi gói tin trả lời từ AP sẽ có một IV mới. Nhờ kĩ thuật này, target AP sẽ phản hồi lại nhanh chóng, cho phép bắt một số lượng lớn các IVs trong thời gian ngắn. Dựa vào số lượng IVs này, attacker có thể tìm ra được WEP key.
 
-> ARP (Address resolution protocol) là một giao thức TCP/IP được dùng để convert một IP address sang một physical address. Một host muốn biết địa chỉ physical của một host khác sẽ broadcast một ARP request trên mạng, host trong mạng có địa chỉ chứa trong ARP request sẽ replies lại physical address của mình.
+## Những công cụ dùng trong cuộc tấn công
+* Aireplay-ng
+* Aircrack-ng
+* Airodump-ng
+* Commview
+* Kismet
+
 ## Các bước tấn công
 Những bước cơ bản:
 * Step 1: Bật monitor mode trên wireless interface. 
